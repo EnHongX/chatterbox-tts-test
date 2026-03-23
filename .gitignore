@@ -1,0 +1,33 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environment
+.venv/
+
+# Local outputs
+output/
+
+# Local input audio assets
+input/*.mp3
+input/*.wav
+input/*.m4a
+!input/.gitkeep
+
+# Model or cache directories that should not be committed
+.cache/
+checkpoints/
+models/
+model/
+weights/
+
+# Environment files
+.env
+.env.*
+!.env.example

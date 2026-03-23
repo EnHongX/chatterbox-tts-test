@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatterbox Turbo TTS</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --border: #d9e0ea;
+      --text: #18202a;
+      --muted: #5f6b7a;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #0f766e;
+      --error: #b42318;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+    }
+
+    p.desc {
+      margin: 0 0 24px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      color: var(--text);
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--primary-hover); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .secondary-btn {
+      background: #e8eef9;
+      color: #163154;
+    }
+
+    .secondary-btn:hover {
+      background: #dbe7fb;
+    }
+
+    .status-box {
+      margin-top: 24px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fbfcfe;
+      padding: 16px;
+      line-height: 1.8;
+    }
+
+    .muted { color: var(--muted); }
+    .success { color: var(--success); }
+    .error { color: var(--error); }
+
+    audio {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .mode-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .mode-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      font-weight: 500;
+    }
+
+    .mode-option input {
+      margin: 0;
+    }
+
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h1>Chatterbox-Turbo English TTS</h1>
+      <p class="desc">
+        本地最小可用页面，默认使用 <code>input/dark_gaming_voice_prompt.mp3</code> 作为参考声音，
+        生成结果输出到 <code>output/</code>。
+      </p>
+
+      <div class="field">
+        <label for="text">英文文本</label>
+        <textarea id="text" placeholder="Please enter English text here.">This is a dark and suspenseful narration. [chuckle] Something was moving behind the door.</textarea>
+      </div>
+
+      <div class="field">
+        <label for="referenceAudio">参考声音文件</label>
+        <select id="referenceAudio"></select>
+      </div>
+
+      <div class="field">
+        <label>生成模式</label>
+        <div id="modeGroup" class="mode-group"></div>
+      </div>
+
+      <div class="actions">
+        <button id="generateBtn">生成音频</button>
+        <span class="muted">默认在本地模型上执行，适合当前 Mac 环境。</span>
+      </div>
+
+      <div class="status-box">
+        <div>当前状态：<span id="statusText" class="muted">待开始</span></div>
+        <div>总耗时：<span id="elapsedText">0.00 秒</span></div>
+        <div>输出文件：<span id="outputPathText" class="muted">暂无</span></div>
+        <div>生成模式：<span id="modeText" class="muted">标准</span></div>
+        <div>分段数量：<span id="segmentCountText">0</span></div>
+        <div class="quick-actions">
+          <button id="playBtn" class="secondary-btn" type="button" disabled>播放音频</button>
+          <button id="revealFileBtn" class="secondary-btn" type="button" disabled>显示文件</button>
+          <button id="openOutputBtn" class="secondary-btn" type="button">打开输出目录</button>
+        </div>
+        <audio id="audioPlayer" controls hidden></audio>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const generateBtn = document.getElementById("generateBtn");
+    const textInput = document.getElementById("text");
+    const referenceAudioSelect = document.getElementById("referenceAudio");
+    const statusText = document.getElementById("statusText");
+    const elapsedText = document.getElementById("elapsedText");
+    const outputPathText = document.getElementById("outputPathText");
+    const modeText = document.getElementById("modeText");
+    const segmentCountText = document.getElementById("segmentCountText");
+    const audioPlayer = document.getElementById("audioPlayer");
+    const playBtn = document.getElementById("playBtn");
+    const revealFileBtn = document.getElementById("revealFileBtn");
+    const openOutputBtn = document.getElementById("openOutputBtn");
+    const modeGroup = document.getElementById("modeGroup");
+
+    let timerId = null;
+    let startedAt = 0;
+    let latestOutputPath = null;
+    let selectedMode = "standard";
+
+    function setStatus(text, className = "muted") {
+      statusText.textContent = text;
+      statusText.className = className;
+    }
+
+    function resetPlayer() {
+      latestOutputPath = null;
+      audioPlayer.hidden = true;
+      audioPlayer.pause();
+      audioPlayer.removeAttribute("src");
+      audioPlayer.load();
+      playBtn.disabled = true;
+      revealFileBtn.disabled = true;
+      segmentCountText.textContent = "0";
+    }
+
+    function startTimer() {
+      startedAt = performance.now();
+      timerId = window.setInterval(() => {
+        const elapsed = (performance.now() - startedAt) / 1000;
+        elapsedText.textContent = `${elapsed.toFixed(2)} 秒`;
+      }, 100);
+    }
+
+    function stopTimer(finalSeconds = null) {
+      if (timerId) {
+        window.clearInterval(timerId);
+        timerId = null;
+      }
+      if (typeof finalSeconds === "number") {
+        elapsedText.textContent = `${finalSeconds.toFixed(2)} 秒`;
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const response = await fetch("/api/config");
+        const config = await response.json();
+        referenceAudioSelect.innerHTML = "";
+
+        for (const optionPath of config.reference_audio_options || []) {
+          const option = document.createElement("option");
+          option.value = optionPath;
+          option.textContent = optionPath;
+          if (optionPath === config.default_reference_audio_path) {
+            option.selected = true;
+          }
+          referenceAudioSelect.appendChild(option);
+        }
+
+        if (!referenceAudioSelect.value) {
+          const fallback = document.createElement("option");
+          fallback.value = config.default_reference_audio_path;
+          fallback.textContent = config.default_reference_audio_path;
+          fallback.selected = true;
+          referenceAudioSelect.appendChild(fallback);
+        }
+
+        modeGroup.innerHTML = "";
+        for (const mode of config.generation_modes || []) {
+          const wrapper = document.createElement("label");
+          wrapper.className = "mode-option";
+
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = "generationMode";
+          radio.value = mode.value;
+          radio.checked = mode.value === config.default_generation_mode;
+          radio.addEventListener("change", () => {
+            selectedMode = mode.value;
+          });
+
+          const text = document.createElement("span");
+          text.textContent = mode.label;
+
+          wrapper.appendChild(radio);
+          wrapper.appendChild(text);
+          modeGroup.appendChild(wrapper);
+        }
+
+        selectedMode = config.default_generation_mode || "standard";
+        modeText.textContent = selectedMode === "fast" ? "极速" : "标准";
+      } catch (error) {
+        console.error("Failed to load config:", error);
+      }
+    }
+
+    async function postJson(url, body = {}) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || "Request failed");
+      }
+
+      return response.json();
+    }
+
+    async function generateAudio() {
+      const text = textInput.value.trim();
+      const referenceAudioPath = referenceAudioSelect.value.trim();
+
+      if (!text) {
+        setStatus("失败：文本不能为空", "error");
+        return;
+      }
+
+      generateBtn.disabled = true;
+      resetPlayer();
+      outputPathText.textContent = "处理中...";
+      setStatus("准备中", "muted");
+      elapsedText.textContent = "0.00 秒";
+      modeText.textContent = selectedMode === "fast" ? "极速" : "标准";
+
+      startTimer();
+
+      try {
+        setStatus("生成中", "muted");
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text,
+            reference_audio_path: referenceAudioPath || null,
+            mode: selectedMode
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || "Unknown error");
+        }
+
+        stopTimer(data.elapsed_seconds);
+        setStatus("完成", "success");
+        outputPathText.textContent = data.output_file_path;
+        modeText.textContent = data.mode === "fast" ? "极速" : "标准";
+        segmentCountText.textContent = String(data.segment_count || 1);
+        latestOutputPath = data.output_file_path;
+        audioPlayer.src = `${data.audio_url}?t=${Date.now()}`;
+        audioPlayer.hidden = false;
+        audioPlayer.load();
+        playBtn.disabled = false;
+        revealFileBtn.disabled = false;
+      } catch (error) {
+        stopTimer();
+        setStatus(`失败：${error.message}`, "error");
+        outputPathText.textContent = "暂无";
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    async function revealGeneratedFile() {
+      if (!latestOutputPath) return;
+
+      try {
+        await postJson("/api/reveal-path", { path: latestOutputPath });
+      } catch (error) {
+        setStatus(`失败：${error.message}`, "error");
+      }
+    }
+
+    async function openOutputDirectory() {
+      try {
+        await postJson("/api/open-output-dir");
+      } catch (error) {
+        setStatus(`失败：${error.message}`, "error");
+      }
+    }
+
+    function playGeneratedAudio() {
+      if (!audioPlayer.src) return;
+      audioPlayer.hidden = false;
+      audioPlayer.play().catch((error) => {
+        setStatus(`失败：${error.message}`, "error");
+      });
+    }
+
+    generateBtn.addEventListener("click", generateAudio);
+    playBtn.addEventListener("click", playGeneratedAudio);
+    revealFileBtn.addEventListener("click", revealGeneratedFile);
+    openOutputBtn.addEventListener("click", openOutputDirectory);
+    loadConfig();
+  </script>
+</body>
+</html>
