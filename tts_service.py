@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import re
+import shutil
+import subprocess
 import threading
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,6 +18,7 @@ import torchaudio as ta
 BASE_DIR = Path(__file__).resolve().parent
 INPUT_DIR = BASE_DIR / "input"
 OUTPUT_DIR = BASE_DIR / "output"
+CACHE_DIR = BASE_DIR / ".cache" / "reference_audio"
 DEFAULT_REFERENCE_AUDIO = INPUT_DIR / "dark_gaming_voice_prompt.mp3"
 SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
 
@@ -103,8 +107,68 @@ class TTSService:
     def __init__(self) -> None:
         self._model = None
         self._model_lock = threading.Lock()
+        self._generation_lock = threading.Lock()
         self._conditionals_cache: dict[str, object] = {}
         self._conditionals_lock = threading.Lock()
+
+    def _prepare_reference_audio_for_model(self, reference_audio_path: Path) -> Path:
+        """
+        避免在 macOS 上直接走 libsndfile 的 mp3/m4a 解码路径，先转成本地缓存 wav。
+        """
+        if reference_audio_path.suffix.lower() == ".wav":
+            return reference_audio_path
+
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        stat = reference_audio_path.stat()
+        cache_key = hashlib.sha1(
+            f"{reference_audio_path.resolve()}:{stat.st_size}:{stat.st_mtime_ns}".encode("utf-8")
+        ).hexdigest()[:16]
+        cached_wav_path = CACHE_DIR / f"{reference_audio_path.stem}_{cache_key}.wav"
+
+        if cached_wav_path.exists():
+            return cached_wav_path
+
+        ffmpeg_path = shutil.which("ffmpeg")
+        if ffmpeg_path:
+            subprocess.run(
+                [
+                    ffmpeg_path,
+                    "-y",
+                    "-i",
+                    str(reference_audio_path),
+                    "-ac",
+                    "1",
+                    "-ar",
+                    "24000",
+                    str(cached_wav_path),
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return cached_wav_path
+
+        afconvert_path = shutil.which("afconvert")
+        if afconvert_path:
+            subprocess.run(
+                [
+                    afconvert_path,
+                    str(reference_audio_path),
+                    str(cached_wav_path),
+                    "-f",
+                    "WAVE",
+                    "-d",
+                    "LEI16@24000",
+                    "-c",
+                    "1",
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return cached_wav_path
+
+        return reference_audio_path
 
     def _load_model(self) -> ChatterboxTurboTTS:
         if self._model is None:
@@ -153,9 +217,11 @@ class TTSService:
         在服务启动后后台预热模型和默认参考音频，减少首次生成等待。
         """
         try:
-            model = self._load_model()
-            if DEFAULT_REFERENCE_AUDIO.exists():
-                self._set_cached_conditionals(model, DEFAULT_REFERENCE_AUDIO.resolve())
+            with self._generation_lock:
+                model = self._load_model()
+                if DEFAULT_REFERENCE_AUDIO.exists():
+                    prepared_reference_path = self._prepare_reference_audio_for_model(DEFAULT_REFERENCE_AUDIO.resolve())
+                    self._set_cached_conditionals(model, prepared_reference_path)
         except Exception:
             # 预热失败不应影响服务启动，首次真实请求时会再按正常逻辑加载。
             pass
@@ -365,26 +431,28 @@ class TTSService:
 
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         output_path = OUTPUT_DIR / f"tts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
+        prepared_reference_path = self._prepare_reference_audio_for_model(reference_audio_path)
 
-        model = self._load_model()
-        self._set_cached_conditionals(model, reference_audio_path)
-        segment_plans = self._split_text_for_mode(clean_text, mode)
-        started_at = perf_counter()
+        with self._generation_lock:
+            model = self._load_model()
+            self._set_cached_conditionals(model, prepared_reference_path)
+            segment_plans = self._split_text_for_mode(clean_text, mode)
+            started_at = perf_counter()
 
-        stitched: list[torch.Tensor] = []
-        for segment_plan in segment_plans:
-            max_gen_len = self._estimate_max_gen_len(segment_plan.text, mode)
-            segment_wav = self._generate_segment(model, segment_plan.text, max_gen_len=max_gen_len)
-            stitched.append(segment_wav)
+            stitched: list[torch.Tensor] = []
+            for segment_plan in segment_plans:
+                max_gen_len = self._estimate_max_gen_len(segment_plan.text, mode)
+                segment_wav = self._generate_segment(model, segment_plan.text, max_gen_len=max_gen_len)
+                stitched.append(segment_wav)
 
-            if segment_plan.pause_after_seconds > 0:
-                pause_samples = int(model.sr * segment_plan.pause_after_seconds)
-                stitched.append(torch.zeros((1, pause_samples), dtype=segment_wav.dtype))
+                if segment_plan.pause_after_seconds > 0:
+                    pause_samples = int(model.sr * segment_plan.pause_after_seconds)
+                    stitched.append(torch.zeros((1, pause_samples), dtype=segment_wav.dtype))
 
-        wav = stitched[0] if len(stitched) == 1 else torch.cat(stitched, dim=1)
+            wav = stitched[0] if len(stitched) == 1 else torch.cat(stitched, dim=1)
 
-        ta.save(str(output_path), wav, model.sr)
-        elapsed_seconds = perf_counter() - started_at
+            ta.save(str(output_path), wav, model.sr)
+            elapsed_seconds = perf_counter() - started_at
 
         return GenerationResult(
             status="completed",

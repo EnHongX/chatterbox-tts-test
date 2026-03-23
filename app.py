@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import subprocess
 import threading
 from pathlib import Path
@@ -20,7 +21,15 @@ from tts_service import (
 
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-app = FastAPI(title="Chatterbox Turbo TTS MVP")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    threading.Thread(target=tts_service.preload, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Chatterbox Turbo TTS MVP", lifespan=lifespan)
 app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
 
@@ -43,11 +52,6 @@ async def index() -> HTMLResponse:
 @app.get("/favicon.ico")
 async def favicon() -> Response:
     return Response(status_code=204)
-
-
-@app.on_event("startup")
-async def warmup_model() -> None:
-    threading.Thread(target=tts_service.preload, daemon=True).start()
 
 
 @app.get("/api/config")
