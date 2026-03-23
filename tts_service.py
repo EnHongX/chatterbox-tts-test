@@ -42,17 +42,27 @@ from chatterbox.tts_turbo import ChatterboxTurboTTS, S3GEN_SIL, punc_norm  # noq
 GENERATION_MODES = {
     "fast": {
         "label": "极速",
-        "min_tokens": 120,
-        "tokens_per_word": 4,
-        "max_tokens": 260,
-        "sentence_split_threshold": 140,
+        "min_tokens": 40,
+        "base_tokens": 18,
+        "chars_to_tokens": 0.82,
+        "max_tokens": 140,
+        "sentence_split_threshold": 90,
+        "hard_char_limit": 110,
+        "fallback_word_limit": 16,
+        "default_pause_seconds": 0.16,
+        "paragraph_pause_seconds": 0.28,
     },
     "standard": {
         "label": "标准",
-        "min_tokens": 180,
-        "tokens_per_word": 6,
-        "max_tokens": 520,
-        "sentence_split_threshold": 220,
+        "min_tokens": 56,
+        "base_tokens": 26,
+        "chars_to_tokens": 1.0,
+        "max_tokens": 220,
+        "sentence_split_threshold": 130,
+        "hard_char_limit": 150,
+        "fallback_word_limit": 22,
+        "default_pause_seconds": 0.20,
+        "paragraph_pause_seconds": 0.34,
     },
 }
 
@@ -81,6 +91,12 @@ class GenerationResult:
     reference_audio_path: Path
     mode: str
     segment_count: int
+
+
+@dataclass
+class SegmentPlan:
+    text: str
+    pause_after_seconds: float
 
 
 class TTSService:
@@ -144,40 +160,158 @@ class TTSService:
             # 预热失败不应影响服务启动，首次真实请求时会再按正常逻辑加载。
             pass
 
-    def _split_text(self, text: str, threshold: int) -> list[str]:
-        normalized = " ".join(text.split())
-        if len(normalized) <= threshold:
-            return [normalized]
+    def _split_text_for_mode(self, text: str, mode: str) -> list[SegmentPlan]:
+        config = GENERATION_MODES[mode]
+        threshold = config["sentence_split_threshold"]
+        hard_char_limit = config["hard_char_limit"]
+        fallback_word_limit = config["fallback_word_limit"]
 
-        parts = re.split(r"(?<=[.!?])\s+", normalized)
-        segments: list[str] = []
-        current = ""
+        normalized = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+        if not normalized:
+            return [SegmentPlan(text="", pause_after_seconds=0.0)]
 
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
+        paragraphs = [part.strip() for part in re.split(r"\n\s*\n+", normalized) if part.strip()]
+        plans: list[SegmentPlan] = []
 
-            if not current:
-                current = part
-                continue
+        for paragraph_index, paragraph in enumerate(paragraphs):
+            units = self._extract_rhythm_units(
+                paragraph=paragraph,
+                threshold=threshold,
+                hard_char_limit=hard_char_limit,
+                fallback_word_limit=fallback_word_limit,
+            )
+            segments = self._merge_units_by_rhythm(units)
 
-            candidate = f"{current} {part}"
-            if len(candidate) <= threshold:
-                current = candidate
-            else:
-                segments.append(current)
-                current = part
+            for segment_index, segment_text in enumerate(segments):
+                is_last_in_paragraph = segment_index == len(segments) - 1
+                has_more_paragraphs = paragraph_index < len(paragraphs) - 1
+                pause_after_seconds = self._estimate_pause_after(
+                    segment_text=segment_text,
+                    default_pause_seconds=config["default_pause_seconds"],
+                    paragraph_pause_seconds=config["paragraph_pause_seconds"],
+                    paragraph_break=is_last_in_paragraph and has_more_paragraphs,
+                )
+                plans.append(SegmentPlan(text=segment_text, pause_after_seconds=pause_after_seconds))
 
-        if current:
-            segments.append(current)
+        if plans:
+            plans[-1].pause_after_seconds = 0.0
 
-        return segments or [normalized]
+        return plans
+
+    def _extract_rhythm_units(
+        self,
+        paragraph: str,
+        threshold: int,
+        hard_char_limit: int,
+        fallback_word_limit: int,
+    ) -> list[str]:
+        raw_lines = [line.strip() for line in paragraph.split("\n") if line.strip()]
+        source_units = raw_lines if len(raw_lines) > 1 else [paragraph.strip()]
+        units: list[str] = []
+
+        for unit in source_units:
+            units.extend(self._split_unit_by_punctuation(unit, threshold, hard_char_limit, fallback_word_limit))
+
+        return [unit for unit in units if unit]
+
+    def _split_unit_by_punctuation(
+        self,
+        text: str,
+        threshold: int,
+        hard_char_limit: int,
+        fallback_word_limit: int,
+    ) -> list[str]:
+        text = " ".join(text.split()).strip()
+        if not text:
+            return []
+        if len(text) <= threshold:
+            return [text]
+
+        sentence_parts = [part.strip() for part in re.split(r"(?<=[.!?…])\s+", text) if part.strip()]
+        if len(sentence_parts) > 1:
+            results: list[str] = []
+            for sentence in sentence_parts:
+                results.extend(self._split_unit_by_punctuation(sentence, threshold, hard_char_limit, fallback_word_limit))
+            return results
+
+        clause_parts = [
+            part.strip()
+            for part in re.split(r"(?<=[,;:])\s+|(?<=\])\s+|(?<=—)\s+", text)
+            if part.strip()
+        ]
+        if len(clause_parts) > 1:
+            results: list[str] = []
+            for clause in clause_parts:
+                results.extend(self._split_unit_by_punctuation(clause, threshold, hard_char_limit, fallback_word_limit))
+            return results
+
+        if len(text) <= hard_char_limit:
+            return [text]
+
+        return self._split_by_words_as_fallback(text, fallback_word_limit)
+
+    def _merge_units_by_rhythm(self, units: list[str]) -> list[str]:
+        merged: list[str] = []
+        index = 0
+
+        while index < len(units):
+            current = units[index].strip()
+            while index + 1 < len(units) and self._should_merge_with_next(current, units[index + 1]):
+                current = f"{current} {units[index + 1].strip()}"
+                index += 1
+            merged.append(current)
+            index += 1
+
+        return merged
+
+    def _should_merge_with_next(self, current: str, next_unit: str) -> bool:
+        current = current.strip()
+        next_unit = next_unit.strip()
+        if not current or not next_unit:
+            return False
+
+        if current.endswith(("—", "-", ":")):
+            return True
+        if current.endswith(("…", "...")) and len(next_unit) <= 40:
+            return True
+        if next_unit.startswith(("“", "\"", "‘", "'")):
+            return len(current) <= 80
+        return False
+
+    def _split_by_words_as_fallback(self, text: str, max_words: int) -> list[str]:
+        words = text.split()
+        chunks: list[str] = []
+        for index in range(0, len(words), max_words):
+            chunk = " ".join(words[index:index + max_words]).strip()
+            if chunk:
+                chunks.append(chunk)
+        return chunks
+
+    def _estimate_pause_after(
+        self,
+        segment_text: str,
+        default_pause_seconds: float,
+        paragraph_pause_seconds: float,
+        paragraph_break: bool,
+    ) -> float:
+        pause = paragraph_pause_seconds if paragraph_break else default_pause_seconds
+        stripped = segment_text.rstrip()
+
+        if stripped.endswith(("…", "...", "—", ":")):
+            pause += 0.08
+        elif stripped.endswith(("?", "!")):
+            pause += 0.04
+        elif len(stripped) <= 24:
+            pause += 0.03
+
+        return pause
 
     def _estimate_max_gen_len(self, text: str, mode: str) -> int:
         config = GENERATION_MODES[mode]
-        word_count = max(1, len(text.split()))
-        estimated = config["min_tokens"] + word_count * config["tokens_per_word"]
+        char_count = max(1, len(text))
+        punctuation_bonus = min(20, len(re.findall(r"[,.!?;:…]", text)) * 4)
+        estimated = config["base_tokens"] + int(char_count * config["chars_to_tokens"]) + punctuation_bonus
+        estimated = max(config["min_tokens"], estimated)
         return min(config["max_tokens"], estimated)
 
     def _generate_segment(self, model: ChatterboxTurboTTS, text: str, max_gen_len: int) -> torch.Tensor:
@@ -234,24 +368,20 @@ class TTSService:
 
         model = self._load_model()
         self._set_cached_conditionals(model, reference_audio_path)
-        segments = self._split_text(clean_text, GENERATION_MODES[mode]["sentence_split_threshold"])
+        segment_plans = self._split_text_for_mode(clean_text, mode)
         started_at = perf_counter()
 
-        generated_segments: list[torch.Tensor] = []
-        for segment in segments:
-            max_gen_len = self._estimate_max_gen_len(segment, mode)
-            generated_segments.append(self._generate_segment(model, segment, max_gen_len=max_gen_len))
+        stitched: list[torch.Tensor] = []
+        for segment_plan in segment_plans:
+            max_gen_len = self._estimate_max_gen_len(segment_plan.text, mode)
+            segment_wav = self._generate_segment(model, segment_plan.text, max_gen_len=max_gen_len)
+            stitched.append(segment_wav)
 
-        if len(generated_segments) == 1:
-            wav = generated_segments[0]
-        else:
-            gap = torch.zeros(1, int(model.sr * 0.18))
-            stitched: list[torch.Tensor] = []
-            for index, segment_wav in enumerate(generated_segments):
-                if index > 0:
-                    stitched.append(gap)
-                stitched.append(segment_wav)
-            wav = torch.cat(stitched, dim=1)
+            if segment_plan.pause_after_seconds > 0:
+                pause_samples = int(model.sr * segment_plan.pause_after_seconds)
+                stitched.append(torch.zeros((1, pause_samples), dtype=segment_wav.dtype))
+
+        wav = stitched[0] if len(stitched) == 1 else torch.cat(stitched, dim=1)
 
         ta.save(str(output_path), wav, model.sr)
         elapsed_seconds = perf_counter() - started_at
@@ -262,7 +392,7 @@ class TTSService:
             output_path=output_path,
             reference_audio_path=reference_audio_path,
             mode=mode,
-            segment_count=len(segments),
+            segment_count=len(segment_plans),
         )
 
 

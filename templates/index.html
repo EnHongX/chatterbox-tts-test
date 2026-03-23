@@ -196,7 +196,7 @@
         <div>当前状态：<span id="statusText" class="muted">待开始</span></div>
         <div>总耗时：<span id="elapsedText">0.00 秒</span></div>
         <div>输出文件：<span id="outputPathText" class="muted">暂无</span></div>
-        <div>生成模式：<span id="modeText" class="muted">标准</span></div>
+        <div>生成模式：<span id="modeText" class="muted">极速</span></div>
         <div>分段数量：<span id="segmentCountText">0</span></div>
         <div class="quick-actions">
           <button id="playBtn" class="secondary-btn" type="button" disabled>播放音频</button>
@@ -226,7 +226,7 @@
     let timerId = null;
     let startedAt = 0;
     let latestOutputPath = null;
-    let selectedMode = "standard";
+    let selectedMode = "fast";
 
     function setStatus(text, className = "muted") {
       statusText.textContent = text;
@@ -308,7 +308,7 @@
           modeGroup.appendChild(wrapper);
         }
 
-        selectedMode = config.default_generation_mode || "standard";
+        selectedMode = config.default_generation_mode || "fast";
         modeText.textContent = selectedMode === "fast" ? "极速" : "标准";
       } catch (error) {
         console.error("Failed to load config:", error);

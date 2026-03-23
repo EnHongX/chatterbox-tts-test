@@ -27,7 +27,7 @@ app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 class GenerateRequest(BaseModel):
     text: str
     reference_audio_path: str | None = None
-    mode: str = "standard"
+    mode: str = "fast"
 
 
 class OpenPathRequest(BaseModel):
@@ -61,7 +61,7 @@ async def get_config() -> dict:
             {"value": "fast", "label": "极速"},
             {"value": "standard", "label": "标准"},
         ],
-        "default_generation_mode": "standard",
+        "default_generation_mode": "fast",
     }
 
 
