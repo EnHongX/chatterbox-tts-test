@@ -3,69 +3,203 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chatterbox Turbo TTS</title>
+  <title>Local-AI-Tools</title>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <style>
     :root {
-      --bg: #f5f7fb;
-      --panel: #ffffff;
-      --border: #d9e0ea;
-      --text: #18202a;
-      --muted: #5f6b7a;
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --success: #0f766e;
-      --error: #b42318;
+      --bg: #07080a;
+      --surface-100: #101111;
+      --surface-card: #1b1c1e;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-strong: rgba(255, 255, 255, 0.1);
+      --text: #f9f9f9;
+      --text-secondary: #cecece;
+      --text-muted: #9c9c9d;
+      --text-dim: #6a6b6c;
+      --accent-red: #FF6363;
+      --accent-blue: hsl(202, 100%, 67%);
+      --accent-green: hsl(151, 59%, 59%);
+      --accent-yellow: hsl(43, 100%, 60%);
+      --blue-glow: hsla(202, 100%, 67%, 0.15);
+      --red-glow: hsla(0, 100%, 69%, 0.15);
     }
 
     * { box-sizing: border-box; }
 
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 100%);
+    html, body {
+      background: var(--bg);
       color: var(--text);
     }
 
+    body {
+      margin: 0;
+      font-family: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-feature-settings: 'calt', 'kern', 'liga', 'ss03';
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.6;
+      letter-spacing: 0.2px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+    }
+
+    /* Top navigation */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(7, 8, 10, 0.85);
+      backdrop-filter: saturate(180%) blur(12px);
+      -webkit-backdrop-filter: saturate(180%) blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topnav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      height: 60px;
+    }
+
+    .topnav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text);
+      letter-spacing: 0.2px;
+    }
+
+    .topnav-brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #FF7878 0%, #d04a4a 100%);
+      box-shadow:
+        rgba(255, 255, 255, 0.18) 0px 1px 0px 0px inset,
+        rgba(0, 0, 0, 0.5) 0px 2px 4px,
+        rgba(255, 99, 99, 0.25) 0px 0px 16px;
+    }
+
+    .topnav-links {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+
+    .topnav-links a {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s ease, opacity 0.15s ease;
+    }
+
+    .topnav-links a:hover { color: var(--text); }
+
+    .topnav-links a.active {
+      color: var(--text);
+      background: var(--surface-card);
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        rgba(255, 255, 255, 0.08) 0px 0px 0px 1px,
+        rgba(0, 0, 0, 0.4) 0px 1px 2px;
+    }
+
+    .topnav-links a.disabled {
+      color: var(--text-dim);
+      cursor: not-allowed;
+    }
+
+    .topnav-links a.disabled:hover { color: var(--text-dim); }
+
+    .topnav-links a .tag {
+      margin-left: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--surface-card);
+      color: var(--text-dim);
+      letter-spacing: 0.3px;
+    }
+
+    /* Container */
     .container {
       max-width: 860px;
-      margin: 40px auto;
-      padding: 0 20px;
+      margin: 48px auto 80px;
+      padding: 0 24px;
     }
 
     .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
+      background: var(--surface-100);
       border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+      padding: 32px;
+      box-shadow:
+        rgb(27, 28, 30) 0px 0px 0px 1px,
+        rgb(7, 8, 10) 0px 0px 0px 2px,
+        rgba(0, 0, 0, 0.5) 0px 30px 60px -20px,
+        rgba(215, 201, 175, 0.04) 0px 0px 30px 5px;
     }
 
     h1 {
       margin: 0 0 10px;
       font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 0px;
+      line-height: 1.15;
+      color: var(--text);
     }
 
     p.desc {
-      margin: 0 0 24px;
-      color: var(--muted);
+      margin: 0 0 28px;
+      color: var(--text-muted);
       line-height: 1.6;
+      font-size: 15px;
+      letter-spacing: 0.2px;
     }
 
     label {
       display: block;
       margin-bottom: 8px;
-      font-weight: 600;
+      font-weight: 500;
+      font-size: 13px;
+      letter-spacing: 0.3px;
+      color: var(--text-muted);
+      text-transform: none;
     }
 
     textarea,
     select {
       width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      background: var(--bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
       padding: 12px 14px;
       font-size: 15px;
+      font-family: inherit;
+      font-weight: 500;
       color: var(--text);
-      background: #fff;
+      letter-spacing: 0.2px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    textarea:focus,
+    select:focus {
+      border-color: rgba(85, 179, 255, 0.5);
+      box-shadow: 0 0 0 3px var(--blue-glow);
     }
 
     textarea {
@@ -74,64 +208,111 @@
       line-height: 1.6;
     }
 
-    .field {
-      margin-bottom: 18px;
+    textarea::placeholder { color: var(--text-dim); }
+
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239c9c9d' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
     }
+
+    .field { margin-bottom: 20px; }
 
     .actions {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-top: 20px;
+      gap: 14px;
+      margin-top: 24px;
       flex-wrap: wrap;
     }
 
+    /* Primary pill button (Raycast CTA style) */
     button {
       border: none;
-      border-radius: 12px;
-      background: var(--primary);
-      color: #fff;
-      padding: 12px 18px;
+      background: hsla(0, 0%, 100%, 0.815);
+      color: #18191a;
+      padding: 11px 22px;
       font-size: 15px;
+      font-family: inherit;
       font-weight: 600;
+      letter-spacing: 0.3px;
       cursor: pointer;
+      border-radius: 86px;
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        rgba(255, 255, 255, 0.25) 0px 0px 0px 1px,
+        rgba(0, 0, 0, 0.2) 0px -1px 0px 0px inset,
+        rgba(0, 0, 0, 0.4) 0px 4px 12px -2px;
+      transition: opacity 0.15s ease, background 0.15s ease;
     }
 
-    button:hover { background: var(--primary-hover); }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button:hover { background: #ffffff; }
 
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Secondary rectangular buttons */
     .secondary-btn {
-      background: #e8eef9;
-      color: #163154;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 7px 13px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        rgba(0, 0, 0, 0.28) 0px 1.189px 2.377px;
     }
 
     .secondary-btn:hover {
-      background: #dbe7fb;
+      background: transparent;
+      opacity: 0.65;
     }
 
+    .secondary-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* Status box */
     .status-box {
-      margin-top: 24px;
+      margin-top: 28px;
       border: 1px solid var(--border);
-      border-radius: 14px;
-      background: #fbfcfe;
-      padding: 16px;
-      line-height: 1.8;
+      border-radius: 12px;
+      background: rgba(7, 8, 10, 0.5);
+      padding: 18px 20px;
+      line-height: 1.9;
+      font-size: 14px;
+      letter-spacing: 0.2px;
+      color: var(--text-secondary);
+      box-shadow: rgb(7, 8, 10) 0px 0px 0px 1px inset;
     }
 
-    .muted { color: var(--muted); }
-    .success { color: var(--success); }
-    .error { color: var(--error); }
+    .status-box > div { display: block; }
+
+    .muted { color: var(--text-muted); }
+    .success { color: var(--accent-green); }
+    .error { color: var(--accent-red); }
 
     audio {
       width: 100%;
-      margin-top: 12px;
+      margin-top: 14px;
+      border-radius: 8px;
+      filter: invert(0.92) hue-rotate(180deg);
     }
 
     .quick-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
-      margin-top: 12px;
+      margin-top: 14px;
     }
 
     .mode-group {
@@ -144,26 +325,68 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 14px;
+      padding: 9px 14px;
+      background: var(--surface-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #fff;
+      border-radius: 6px;
       font-weight: 500;
+      font-size: 14px;
+      letter-spacing: 0.2px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      box-shadow:
+        rgba(255, 255, 255, 0.04) 0px 1px 0px 0px inset,
+        rgba(0, 0, 0, 0.28) 0px 1.189px 2.377px;
     }
 
-    .mode-option input {
-      margin: 0;
+    .mode-option:hover { color: var(--text); }
+
+    .mode-option input { margin: 0; accent-color: var(--accent-blue); }
+
+    .mode-option:has(input:checked) {
+      border-color: rgba(85, 179, 255, 0.5);
+      color: var(--text);
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        0 0 0 3px var(--blue-glow);
     }
 
     code {
-      background: #eef2ff;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
       padding: 2px 6px;
-      border-radius: 6px;
+      border-radius: 4px;
       font-size: 13px;
+      color: var(--text-secondary);
+      font-family: 'GeistMono', ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
+      letter-spacing: 0.2px;
+    }
+
+    @media (max-width: 600px) {
+      .topnav-inner { gap: 12px; height: auto; padding: 12px 16px; flex-wrap: wrap; }
+      .container { margin: 32px auto 60px; padding: 0 16px; }
+      .panel { padding: 24px 20px; border-radius: 14px; }
+      h1 { font-size: 24px; }
     }
   </style>
 </head>
 <body>
+  <nav class="topnav">
+    <div class="topnav-inner">
+      <div class="topnav-brand">
+        <span class="topnav-brand-mark"></span>
+        <span>Local-AI-Tools</span>
+      </div>
+      <div class="topnav-links">
+        <a href="/" class="active">语音合成 TTS</a>
+        <a href="/format">文本格式化</a>
+        <a href="#" class="disabled">语音转文字 STT<span class="tag">待上线</span></a>
+        <a href="#" class="disabled">图像生成<span class="tag">待上线</span></a>
+      </div>
+    </div>
+  </nav>
+
   <div class="container">
     <div class="panel">
       <h1>Chatterbox-Turbo English TTS</h1>
@@ -420,6 +643,12 @@
     revealFileBtn.addEventListener("click", revealGeneratedFile);
     openOutputBtn.addEventListener("click", openOutputDirectory);
     loadConfig();
+
+    const pendingText = sessionStorage.getItem("tts_pending_text");
+    if (pendingText) {
+      textInput.value = pendingText;
+      sessionStorage.removeItem("tts_pending_text");
+    }
   </script>
 </body>
 </html>

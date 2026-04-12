@@ -1,6 +1,6 @@
-# Chatterbox-Turbo Local Web TTS
+# Local-AI-Tools
 
-一个基于本地 `Chatterbox-Turbo` 的最小可用 Web TTS 项目。
+一个本地化的 AI 工具集合仓库。当前包含一个基于本地 `Chatterbox-Turbo` 的 Web TTS 工具，后续会在此仓库中逐步加入更多本地 AI 小工具。
 
 这个项目提供一个简单网页，用来输入英文文本、调用本地模型生成语音，并在页面中显示：
 
@@ -13,6 +13,8 @@
 
 ## Features
 
+- 顶部导航栏，多工具切换。当前激活工具：`语音合成 TTS`、`文本格式化`，其余（STT / 图像生成）为"待上线"占位
+- **文本格式化工具**：清理中文长文乱排版（修复随机换行、空行劈句、章节标题独立成段、引语自动换段），支持段首缩进 / 中英文间加空格 / 一键复制 / 一键发送到 TTS
 - 本地 Web 页面，直接在浏览器操作
 - 后端使用 Python `FastAPI`
 - 参考声音文件以下拉选择方式从 `input/` 目录读取
@@ -29,11 +31,13 @@
 ## Project Structure
 
 ```text
-chatterbox-tts-test/
+Local-AI-Tools/
 ├── app.py
 ├── tts_service.py
+├── text_formatter.py
 ├── templates/
-│   └── index.html
+│   ├── index.html
+│   └── format.html
 ├── scripts/
 │   └── test_tts.py
 ├── input/
@@ -65,7 +69,7 @@ chatterbox-tts-test/
 
 ```bash
 git clone <your-repo-url>
-cd chatterbox-tts-test
+cd Local-AI-Tools
 ```
 
 ### 2. Create virtual environment
@@ -78,7 +82,7 @@ source .venv/bin/activate
 激活后终端应类似：
 
 ```bash
-(.venv) YOU@MY chatterbox-tts-test
+(.venv) YOU@MY Local-AI-Tools
 ```
 
 ### 3. Install dependencies
@@ -93,6 +97,12 @@ pip install fastapi uvicorn
 ```
 
 `Chatterbox-Turbo`、`torch`、`torchaudio`、`perth` 请按你当前本地已验证成功的方式安装。
+
+注意：`perth` 这个包在 PyPI 上的实际名字是 `resemble-perth`，import 名才是 `perth`：
+
+```bash
+pip install resemble-perth
+```
 
 ## Configuration
 
@@ -159,7 +169,7 @@ output/tts_20260323_142530.wav
 ### Start server
 
 ```bash
-cd /YOUR-PATH/chatterbox-tts-test
+cd /YOUR-PATH/Local-AI-Tools
 source .venv/bin/activate
 python app.py
 ```
@@ -167,7 +177,7 @@ python app.py
 或者：
 
 ```bash
-cd /YOUR-PATH/chatterbox-tts-test
+cd /YOUR-PATH/Local-AI-Tools
 .venv/bin/python app.py
 ```
 
@@ -227,6 +237,31 @@ http://localhost:8010
 }
 ```
 
+### `GET /format`
+
+文本格式化工具页面。
+
+### `POST /api/format`
+
+请求示例：
+
+```bash
+curl -X POST http://127.0.0.1:8010/api/format \
+  -H "Content-Type: application/json" \
+  -d '{"text":"原始文本...","paragraph_indent":false,"add_space_between_cjk_and_ascii":false}'
+```
+
+返回示例：
+
+```json
+{
+  "formatted_text": "整理后的文本...",
+  "original_char_count": 269,
+  "formatted_char_count": 247,
+  "paragraph_count": 9
+}
+```
+
 ### `POST /api/generate`
 
 请求示例：
@@ -245,7 +280,7 @@ curl -X POST http://127.0.0.1:8010/api/generate \
   "elapsed_seconds": 12.34,
   "output_file_path": "output/tts_20260323_142530.wav",
   "audio_url": "/output/tts_20260323_142530.wav",
-  "reference_audio_path": "/YOUR-PATH/chatterbox-tts-test/input/dark_gaming_voice_prompt.mp3",
+  "reference_audio_path": "/YOUR-PATH/Local-AI-Tools/input/dark_gaming_voice_prompt.mp3",
   "mode": "fast",
   "segment_count": 2
 }
@@ -307,14 +342,29 @@ curl -X POST http://127.0.0.1:8010/api/generate \
 请先确认你本地原有测试脚本可以运行：
 
 ```bash
-cd /YOUR-PATH/chatterbox-tts-test
+cd /YOUR-PATH/Local-AI-Tools
 source .venv/bin/activate
 python scripts/test_tts.py
 ```
 
 如果这个脚本不能运行，说明问题不在 Web 层，而在本地模型环境本身。
 
-### 3. Browser cannot open page
+### 3. `pkg_resources is deprecated` warning
+
+启动时如果看到：
+
+```text
+UserWarning: pkg_resources is deprecated as an API.
+```
+
+这是 `perth` 内部使用了已废弃的 `pkg_resources`，只是警告、不影响功能，可以忽略。
+如果想彻底去掉，可以降级 `setuptools`：
+
+```bash
+pip install "setuptools<81"
+```
+
+### 4. Browser cannot open page
 
 确认服务已启动，并访问：
 

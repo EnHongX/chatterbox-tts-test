@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
+from text_formatter import format_text
 from tts_service import (
     BASE_DIR,
     DEFAULT_REFERENCE_AUDIO,
@@ -43,10 +44,37 @@ class OpenPathRequest(BaseModel):
     path: str | None = None
 
 
+class FormatRequest(BaseModel):
+    text: str
+    paragraph_indent: bool = False
+    add_space_between_cjk_and_ascii: bool = False
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
     html_path = BASE_DIR / "templates" / "index.html"
     return HTMLResponse(html_path.read_text(encoding="utf-8"))
+
+
+@app.get("/format", response_class=HTMLResponse)
+async def format_page() -> HTMLResponse:
+    html_path = BASE_DIR / "templates" / "format.html"
+    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+
+
+@app.post("/api/format")
+async def format_endpoint(payload: FormatRequest) -> dict:
+    result = format_text(
+        payload.text,
+        paragraph_indent=payload.paragraph_indent,
+        add_space_between_cjk_and_ascii=payload.add_space_between_cjk_and_ascii,
+    )
+    return {
+        "formatted_text": result.formatted_text,
+        "original_char_count": result.original_char_count,
+        "formatted_char_count": result.formatted_char_count,
+        "paragraph_count": result.paragraph_count,
+    }
 
 
 @app.get("/favicon.ico")

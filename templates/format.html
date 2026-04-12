@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文本格式化 · Local-AI-Tools</title>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <style>
+    :root {
+      --bg: #07080a;
+      --surface-100: #101111;
+      --surface-card: #1b1c1e;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-strong: rgba(255, 255, 255, 0.1);
+      --text: #f9f9f9;
+      --text-secondary: #cecece;
+      --text-muted: #9c9c9d;
+      --text-dim: #6a6b6c;
+      --accent-red: #FF6363;
+      --accent-blue: hsl(202, 100%, 67%);
+      --accent-green: hsl(151, 59%, 59%);
+      --accent-yellow: hsl(43, 100%, 60%);
+      --blue-glow: hsla(202, 100%, 67%, 0.15);
+      --red-glow: hsla(0, 100%, 69%, 0.15);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { background: var(--bg); color: var(--text); }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-feature-settings: 'calt', 'kern', 'liga', 'ss03';
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.6;
+      letter-spacing: 0.2px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+    }
+
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(7, 8, 10, 0.85);
+      backdrop-filter: saturate(180%) blur(12px);
+      -webkit-backdrop-filter: saturate(180%) blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topnav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      height: 60px;
+    }
+
+    .topnav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text);
+      letter-spacing: 0.2px;
+    }
+
+    .topnav-brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #FF7878 0%, #d04a4a 100%);
+      box-shadow:
+        rgba(255, 255, 255, 0.18) 0px 1px 0px 0px inset,
+        rgba(0, 0, 0, 0.5) 0px 2px 4px,
+        rgba(255, 99, 99, 0.25) 0px 0px 16px;
+    }
+
+    .topnav-links {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+
+    .topnav-links a {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s ease, opacity 0.15s ease;
+    }
+
+    .topnav-links a:hover { color: var(--text); }
+
+    .topnav-links a.active {
+      color: var(--text);
+      background: var(--surface-card);
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        rgba(255, 255, 255, 0.08) 0px 0px 0px 1px,
+        rgba(0, 0, 0, 0.4) 0px 1px 2px;
+    }
+
+    .topnav-links a.disabled { color: var(--text-dim); cursor: not-allowed; }
+    .topnav-links a.disabled:hover { color: var(--text-dim); }
+
+    .topnav-links a .tag {
+      margin-left: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--surface-card);
+      color: var(--text-dim);
+      letter-spacing: 0.3px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 48px auto 80px;
+      padding: 0 24px;
+    }
+
+    .panel {
+      background: var(--surface-100);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow:
+        rgb(27, 28, 30) 0px 0px 0px 1px,
+        rgb(7, 8, 10) 0px 0px 0px 2px,
+        rgba(0, 0, 0, 0.5) 0px 30px 60px -20px,
+        rgba(215, 201, 175, 0.04) 0px 0px 30px 5px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 0px;
+      line-height: 1.15;
+      color: var(--text);
+    }
+
+    p.desc {
+      margin: 0 0 28px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      font-size: 13px;
+      letter-spacing: 0.3px;
+      color: var(--text-muted);
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: 0.2px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.7;
+    }
+
+    textarea:focus {
+      border-color: rgba(85, 179, 255, 0.5);
+      box-shadow: 0 0 0 3px var(--blue-glow);
+    }
+
+    textarea::placeholder { color: var(--text-dim); }
+
+    textarea[readonly] { background: rgba(7, 8, 10, 0.5); }
+
+    .field { margin-bottom: 20px; }
+
+    .options {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 8px 0 20px;
+    }
+
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      box-shadow:
+        rgba(255, 255, 255, 0.04) 0px 1px 0px 0px inset,
+        rgba(0, 0, 0, 0.28) 0px 1.189px 2.377px;
+    }
+
+    .option:hover { color: var(--text); }
+    .option input { margin: 0; accent-color: var(--accent-blue); }
+
+    .option:has(input:checked) {
+      border-color: rgba(85, 179, 255, 0.5);
+      color: var(--text);
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        0 0 0 3px var(--blue-glow);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      background: hsla(0, 0%, 100%, 0.815);
+      color: #18191a;
+      padding: 11px 22px;
+      font-size: 15px;
+      font-family: inherit;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      border-radius: 86px;
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        rgba(255, 255, 255, 0.25) 0px 0px 0px 1px,
+        rgba(0, 0, 0, 0.2) 0px -1px 0px 0px inset,
+        rgba(0, 0, 0, 0.4) 0px 4px 12px -2px;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover { background: #ffffff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .secondary-btn {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 7px 13px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      box-shadow:
+        rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset,
+        rgba(0, 0, 0, 0.28) 0px 1.189px 2.377px;
+    }
+
+    .secondary-btn:hover { background: transparent; opacity: 0.65; }
+    .secondary-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .stats {
+      margin-top: 24px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(7, 8, 10, 0.5);
+      box-shadow: rgb(7, 8, 10) 0px 0px 0px 1px inset;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      color: var(--text-secondary);
+    }
+
+    .stats .stat-item { display: flex; align-items: baseline; gap: 6px; }
+    .stats .stat-label { color: var(--text-muted); }
+    .stats .stat-value { color: var(--text); font-weight: 600; }
+    .stats .stat-delta { color: var(--accent-green); font-weight: 600; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 28px 0 8px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .result-header h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      color: var(--text);
+    }
+
+    .result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface-card);
+      color: var(--text);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      box-shadow:
+        rgba(255, 255, 255, 0.08) 0px 0px 0px 1px,
+        rgba(0, 0, 0, 0.6) 0px 8px 24px -4px;
+      z-index: 100;
+    }
+
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { color: var(--accent-red); }
+
+    code {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-family: 'GeistMono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    }
+
+    @media (max-width: 600px) {
+      .topnav-inner { gap: 12px; height: auto; padding: 12px 16px; flex-wrap: wrap; }
+      .container { margin: 32px auto 60px; padding: 0 16px; }
+      .panel { padding: 24px 20px; border-radius: 14px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <div class="topnav-inner">
+      <div class="topnav-brand">
+        <span class="topnav-brand-mark"></span>
+        <span>Local-AI-Tools</span>
+      </div>
+      <div class="topnav-links">
+        <a href="/">语音合成 TTS</a>
+        <a href="/format" class="active">文本格式化</a>
+        <a href="#" class="disabled">语音转文字 STT<span class="tag">待上线</span></a>
+        <a href="#" class="disabled">图像生成<span class="tag">待上线</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="panel">
+      <h1>文本格式化</h1>
+      <p class="desc">
+        清理长文本中乱掉的换行、断句和多余空行。规则：块内换行合并为整句，<code>。！？</code> 等句末符号才视为段落边界，
+        <code>1 楔子</code> / <code>第二章 …</code> 之类的章节标题独立成段。
+      </p>
+
+      <div class="field">
+        <label for="inputText">原始文本</label>
+        <textarea id="inputText" placeholder="把乱排版的小说/文章贴进来..."></textarea>
+      </div>
+
+      <div class="options">
+        <label class="option">
+          <input type="checkbox" id="optIndent">
+          <span>段首缩进（全角双空格）</span>
+        </label>
+        <label class="option">
+          <input type="checkbox" id="optPanguSpace">
+          <span>中英文间加空格</span>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="formatBtn">格式化</button>
+        <span class="muted" style="color: var(--text-muted); font-size: 13px;">本地处理，不会上传任何内容</span>
+      </div>
+
+      <div id="statsBox" class="stats" hidden>
+        <div class="stat-item"><span class="stat-label">原始字符</span><span class="stat-value" id="statOriginal">0</span></div>
+        <div class="stat-item"><span class="stat-label">格式化后</span><span class="stat-value" id="statFormatted">0</span></div>
+        <div class="stat-item"><span class="stat-label">清理</span><span class="stat-delta" id="statDelta">0</span></div>
+        <div class="stat-item"><span class="stat-label">段落数</span><span class="stat-value" id="statParagraphs">0</span></div>
+      </div>
+
+      <div class="result-header">
+        <h2>格式化结果</h2>
+        <div class="result-actions">
+          <button id="copyBtn" class="secondary-btn" type="button" disabled>复制结果</button>
+          <button id="sendToTtsBtn" class="secondary-btn" type="button" disabled>发送到 TTS</button>
+        </div>
+      </div>
+      <textarea id="outputText" readonly placeholder="格式化后的内容会显示在这里"></textarea>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const inputText = document.getElementById("inputText");
+    const outputText = document.getElementById("outputText");
+    const formatBtn = document.getElementById("formatBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const sendToTtsBtn = document.getElementById("sendToTtsBtn");
+    const optIndent = document.getElementById("optIndent");
+    const optPanguSpace = document.getElementById("optPanguSpace");
+    const statsBox = document.getElementById("statsBox");
+    const statOriginal = document.getElementById("statOriginal");
+    const statFormatted = document.getElementById("statFormatted");
+    const statDelta = document.getElementById("statDelta");
+    const statParagraphs = document.getElementById("statParagraphs");
+    const toast = document.getElementById("toast");
+
+    let toastTimer = null;
+    function showToast(message, isError = false) {
+      toast.textContent = message;
+      toast.classList.toggle("error", isError);
+      toast.classList.add("show");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    async function runFormat() {
+      const text = inputText.value;
+      if (!text.trim()) {
+        showToast("请先粘贴需要格式化的文本", true);
+        return;
+      }
+      formatBtn.disabled = true;
+      try {
+        const response = await fetch("/api/format", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text,
+            paragraph_indent: optIndent.checked,
+            add_space_between_cjk_and_ascii: optPanguSpace.checked
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "格式化失败");
+        outputText.value = data.formatted_text;
+        statOriginal.textContent = data.original_char_count;
+        statFormatted.textContent = data.formatted_char_count;
+        const delta = data.original_char_count - data.formatted_char_count;
+        statDelta.textContent = delta >= 0 ? `-${delta}` : `+${-delta}`;
+        statParagraphs.textContent = data.paragraph_count;
+        statsBox.hidden = false;
+        copyBtn.disabled = false;
+        sendToTtsBtn.disabled = false;
+      } catch (error) {
+        showToast(error.message, true);
+      } finally {
+        formatBtn.disabled = false;
+      }
+    }
+
+    async function copyResult() {
+      if (!outputText.value) return;
+      try {
+        await navigator.clipboard.writeText(outputText.value);
+        showToast("已复制到剪贴板");
+      } catch {
+        outputText.select();
+        document.execCommand("copy");
+        showToast("已复制到剪贴板");
+      }
+    }
+
+    function sendToTts() {
+      if (!outputText.value) return;
+      sessionStorage.setItem("tts_pending_text", outputText.value);
+      window.location.href = "/";
+    }
+
+    formatBtn.addEventListener("click", runFormat);
+    copyBtn.addEventListener("click", copyResult);
+    sendToTtsBtn.addEventListener("click", sendToTts);
+
+    inputText.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        runFormat();
+      }
+    });
+  </script>
+</body>
+</html>
